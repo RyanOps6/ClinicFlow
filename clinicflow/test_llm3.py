@@ -5,12 +5,12 @@ from dotenv import load_dotenv, find_dotenv
 # Load environment variables from .env
 load_dotenv(find_dotenv())
 
-api_key = os.environ.get("OPENAI_API_KEY")
-base_url = os.environ.get("OPENAI_BASE_URL", "https://integrate.api.nvidia.com/v1")
-model = os.environ.get("OPENAI_MODEL", "meta/llama-3.1-8b-instruct")
+api_key = os.environ.get("LLM_API_KEY") or os.environ.get("OPENAI_API_KEY")
+base_url = os.environ.get("LLM_BASE_URL") or os.environ.get("OPENAI_BASE_URL", "https://integrate.api.nvidia.com/v1")
+model = os.environ.get("LLM_MODEL") or os.environ.get("OPENAI_MODEL", "meta/llama-3.1-8b-instruct")
 
 if not api_key:
-    raise ValueError("OPENAI_API_KEY environment variable is not set. Please create a .env file.")
+    raise ValueError("Neither LLM_API_KEY nor OPENAI_API_KEY environment variable is set. Please create a .env file.")
 
 client = OpenAI(api_key=api_key, base_url=base_url)
 

@@ -10,14 +10,17 @@ from app.core.config import settings
 class LLMClient:
     def __init__(self):
         self.client = None
-        self.model = settings.openai_model
+        self.model = settings.llm_model or settings.openai_model
         self._init_client()
 
     def _init_client(self):
-        if settings.openai_api_key:
-            kwargs = {"api_key": settings.openai_api_key}
-            if settings.openai_base_url:
-                kwargs["base_url"] = settings.openai_base_url
+        api_key = settings.llm_api_key or settings.openai_api_key
+        base_url = settings.llm_base_url or settings.openai_base_url
+        
+        if api_key:
+            kwargs = {"api_key": api_key}
+            if base_url:
+                kwargs["base_url"] = base_url
             self.client = OpenAI(**kwargs)
 
     @property
