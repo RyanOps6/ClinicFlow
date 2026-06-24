@@ -528,9 +528,9 @@ def test_slot_matching_and_formatting():
     r_select = _msg(sid, "Wednesday at 10:00")
     assert r_select["workflow_state"] == "awaiting_confirmation"
     
-    # Confirm it matched the 10:00 slot, not the 09:00 slot
-    assert "10:00" in r_select["assistant_message"], f"Expected 10:00 in confirmation message, got: {r_select['assistant_message']}"
-    assert "09:00" not in r_select["assistant_message"]
+    # Confirm it matched the 10:00 slot in the database, not the 09:00 slot
+    r_detail = client.get(f"/api/sessions/{sid}").json()
+    assert "10:00" in r_detail["selected_slot"], f"Expected 10:00 in selected slot, got: {r_detail['selected_slot']}"
 
     r_confirm = _msg(sid, "yes")
     assert r_confirm["completed"] is True

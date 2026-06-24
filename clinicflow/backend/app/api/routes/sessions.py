@@ -1,6 +1,6 @@
 import json
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session as DBSession
 
 from app.core.db import get_db
@@ -93,3 +93,46 @@ def get_session_audit_logs(session_id: int, db: DBSession = Depends(get_db)):
         }
         for log in logs
     ]
+
+
+@router.websocket("/ws/{session_id}")
+async def websocket_endpoint(websocket: WebSocket, session_id: int, db: DBSession = Depends(get_db)):
+    import os
+    import base64
+    from fastapi.concurrency import run_in_threadpool
+    from app.services.voice_handler import process_voice_turn
+
+    await websocket.accept()
+    try:
+        while True:
+            # Receive user audio chunk/bytes (UTF-8 encoded text or raw audio bytes)
+            audio_data = await websocket.receive_bytes()
+            
+            # Process the voice turn through STT -> Engine -> TTS
+            result = await run_in_threadpool(process_voice_turn, db, session_id, audio_data)
+            
+            # Read generated audio response bytes
+            audio_file_path = result["audio_file_path"]
+            encoded_audio = ""
+            if os.path.exists(audio_file_path):
+                with open(audio_file_path, "rb") as f:
+                    response_audio_bytes = f.read()
+                encoded_audio = base64.b64encode(response_audio_bytes).decode("utf-8")
+                
+            await websocket.send_json({
+                "transcription": result["transcription"],
+                "assistant_response": result["assistant_response"],
+                "audio": encoded_audio,
+                "completed": result["completed"],
+                "workflow_state": result["workflow_state"],
+            })
+    except WebSocketDisconnect:
+        pass
+    except Exception as e:
+        import logging
+        logging.error(f"WebSocket error in turn processing: {e}")
+    finally:
+        try:
+            await websocket.close()
+        except Exception:
+            pass

@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Send, RotateCcw, User, Bot, PhoneCall, CalendarPlus, CalendarX } from 'lucide-react';
+import { Send, RotateCcw, User, Bot, PhoneCall, CalendarPlus, CalendarX, Mic, MicOff } from 'lucide-react';
 import type { SendMessageResponse } from '../types';
 import { sendMessage, startRescheduleSession, startCancelSession, startSession } from '../api/client';
 
@@ -30,11 +30,169 @@ export default function ChatInterface({ onSessionUpdate }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Live voice refs and states
+  const [isCallActive, setIsCallActive] = useState(false);
+  const wsRef = useRef<WebSocket | null>(null);
+  const recognitionRef = useRef<any>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   useEffect(() => { scrollToBottom(); }, [messages]);
+
+  const endVoiceCall = useCallback(() => {
+    setIsCallActive(false);
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.onend = null;
+        recognitionRef.current.stop();
+      } catch (e) {}
+      recognitionRef.current = null;
+    }
+    if (wsRef.current) {
+      try {
+        wsRef.current.close();
+      } catch (e) {}
+      wsRef.current = null;
+    }
+    if (audioRef.current) {
+      try {
+        audioRef.current.pause();
+      } catch (e) {}
+      audioRef.current = null;
+    }
+  }, []);
+
+  const startVoiceCall = useCallback(() => {
+    if (!sessionId) return;
+    
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//localhost:8000/api/sessions/ws/${sessionId}`;
+    const ws = new WebSocket(wsUrl);
+    wsRef.current = ws;
+    
+    ws.onopen = () => {
+      console.log("WebSocket connected");
+      setIsCallActive(true);
+    };
+    
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        const reply = data.assistant_response;
+        const userSpeech = data.transcription;
+        
+        if (userSpeech) {
+          setMessages(prev => {
+            const last = prev[prev.length - 1];
+            if (last && last.role === 'user' && last.content === userSpeech) {
+              return prev;
+            }
+            return [...prev, { role: 'user', content: userSpeech }];
+          });
+        }
+        
+        if (reply) {
+          setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
+        }
+        
+        if (data.workflow_state) {
+          setWorkflowState(data.workflow_state);
+        }
+        
+        const newStatus = data.completed ? 'completed' : 'active';
+        if (data.completed) {
+          setStatus('completed');
+          endVoiceCall();
+        }
+        
+        onSessionUpdate?.({
+          sessionId,
+          intent: data.intent || intent,
+          collectedData: data.collected_data || collectedData,
+          workflowState: data.workflow_state,
+          status: newStatus
+        });
+        
+        if (data.audio) {
+          const audioUrl = `data:audio/wav;base64,${data.audio}`;
+          if (audioRef.current) {
+            audioRef.current.pause();
+          }
+          const audio = new Audio(audioUrl);
+          audioRef.current = audio;
+          audio.play().catch(err => console.error("Audio play failed:", err));
+        }
+      } catch (err) {
+        console.error("WebSocket message parse error:", err);
+      }
+    };
+    
+    ws.onclose = () => {
+      setIsCallActive(false);
+    };
+    
+    ws.onerror = (err) => {
+      console.error("WebSocket error:", err);
+    };
+    
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Speech recognition API is not supported in this browser. Please use Chrome or Edge.");
+      return;
+    }
+    
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+    
+    recognition.onresult = (event: any) => {
+      const resultText = event.results[event.results.length - 1][0].transcript.trim();
+      if (resultText && ws.readyState === WebSocket.OPEN) {
+        setMessages(prev => [...prev, { role: 'user', content: resultText }]);
+        const encoder = new TextEncoder();
+        const dataBytes = encoder.encode(resultText);
+        ws.send(dataBytes);
+      }
+    };
+    
+    recognition.onend = () => {
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        try {
+          recognition.start();
+        } catch (e) {}
+      }
+    };
+    
+    recognitionRef.current = recognition;
+    recognition.start();
+    
+  }, [sessionId, onSessionUpdate, intent, collectedData, endVoiceCall]);
+
+  const toggleVoiceCall = useCallback(() => {
+    if (isCallActive) {
+      endVoiceCall();
+    } else {
+      startVoiceCall();
+    }
+  }, [isCallActive, startVoiceCall, endVoiceCall]);
+
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        try { recognitionRef.current.onend = null; recognitionRef.current.stop(); } catch (e) {}
+      }
+      if (wsRef.current) {
+        try { wsRef.current.close(); } catch (e) {}
+      }
+      if (audioRef.current) {
+        try { audioRef.current.pause(); } catch (e) {}
+      }
+    };
+  }, []);
 
   const handleStart = useCallback(async (type: string = 'unified') => {
     setLoading(true);
@@ -84,6 +242,7 @@ export default function ChatInterface({ onSessionUpdate }: Props) {
   }, [input, sessionId, loading, onSessionUpdate]);
 
   const handleReset = useCallback(() => {
+    endVoiceCall();
     setSessionId(null);
     setMessages([]);
     setInput('');
@@ -92,7 +251,7 @@ export default function ChatInterface({ onSessionUpdate }: Props) {
     setCollectedData({});
     setWorkflowState('—');
     onSessionUpdate?.({ sessionId: null, intent: 'unknown', collectedData: {}, workflowState: '—', status: 'idle' });
-  }, [onSessionUpdate]);
+  }, [onSessionUpdate, endVoiceCall]);
 
   const sessionTypes: { key: string; label: string; icon: React.ElementType; style: string }[] = [
     { key: 'unified', label: 'Simulate Unified Call', icon: PhoneCall, style: 'bg-medical-50 text-medical-700 border-medical-200 hover:bg-medical-100' },
@@ -108,9 +267,23 @@ export default function ChatInterface({ onSessionUpdate }: Props) {
           Staff Test Playground
         </h3>
         {status !== 'idle' && (
-          <button onClick={handleReset} className="flex items-center gap-1 text-xs text-slate-500 hover:text-red-500 transition-colors">
-            <RotateCcw className="w-3 h-3" /> Reset Simulator
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={toggleVoiceCall}
+              disabled={status === 'completed'}
+              className={`flex items-center gap-1 px-2.5 py-1.25 rounded-full border text-[11px] font-semibold transition-all duration-200 ${
+                isCallActive
+                  ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100'
+                  : 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100'
+              } disabled:opacity-50`}
+            >
+              {isCallActive ? <MicOff className="w-3 h-3 text-red-500" /> : <Mic className="w-3 h-3 text-emerald-500" />}
+              {isCallActive ? 'End Call' : 'Voice Call'}
+            </button>
+            <button onClick={handleReset} className="flex items-center gap-1 text-xs text-slate-500 hover:text-red-500 transition-colors">
+              <RotateCcw className="w-3 h-3" /> Reset Simulator
+            </button>
+          </div>
         )}
       </div>
 
