@@ -29,7 +29,7 @@ export default function ChatInterface({ onSessionUpdate }: Props) {
   const [collectedData, setCollectedData] = useState<Record<string, unknown>>({});
   const [workflowState, setWorkflowState] = useState('—');
   const inputRef = useRef<HTMLInputElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Live voice refs and states
   const [isCallActive, setIsCallActive] = useState(false);
@@ -40,7 +40,12 @@ export default function ChatInterface({ onSessionUpdate }: Props) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({
+        top: scrollContainerRef.current.scrollHeight,
+        behavior: 'smooth',
+      });
+    }
   };
 
   useEffect(() => { scrollToBottom(); }, [messages]);
@@ -436,7 +441,7 @@ export default function ChatInterface({ onSessionUpdate }: Props) {
         </div>
       ) : (
         <>
-          <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin">
+          <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3 scrollbar-thin">
             {messages.map((m, i) => (
               <div key={i} className={`flex gap-3 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 border ${
@@ -469,7 +474,6 @@ export default function ChatInterface({ onSessionUpdate }: Props) {
                 </div>
               </div>
             )}
-            <div ref={messagesEndRef} />
           </div>
 
           <div className="p-4 border-t border-slate-200 bg-slate-50">
