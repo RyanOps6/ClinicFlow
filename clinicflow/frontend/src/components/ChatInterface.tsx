@@ -79,7 +79,8 @@ export default function ChatInterface({ onSessionUpdate }: Props) {
     const wsBase = import.meta.env.PROD
       ? 'wss://clinicflow-backend-h4w4.onrender.com'
       : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`;
-    const wsUrl = `${wsBase}/api/sessions/ws/${sessionId}`;
+    const token = localStorage.getItem('auth_token') || '';
+    const wsUrl = `${wsBase}/api/sessions/ws/${sessionId}?token=${token}`;
     
     let ws: WebSocket;
     try {

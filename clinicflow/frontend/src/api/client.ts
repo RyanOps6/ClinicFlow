@@ -10,9 +10,44 @@ export const BASE = import.meta.env.PROD
   ? 'https://clinicflow-backend-h4w4.onrender.com'
   : '';
 
-async function request<T>(url: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}/api${url}`, {
+let authToken: string | null = localStorage.getItem('auth_token');
+
+export function getAuthToken(): string | null {
+  return authToken;
+}
+
+export function setAuthToken(token: string | null): void {
+  authToken = token;
+  if (token) {
+    localStorage.setItem('auth_token', token);
+  } else {
+    localStorage.removeItem('auth_token');
+  }
+}
+
+export async function login(username: string, password: string): Promise<{ token: string; username: string }> {
+  const res = await fetch(`${BASE}/api/auth/login`, {
+    method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  });
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.detail || `Login error: ${res.status}`);
+  }
+  const data = await res.json();
+  setAuthToken(data.token);
+  return data;
+}
+
+async function request<T>(url: string, options?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (authToken) {
+    headers['Authorization'] = `Bearer ${authToken}`;
+  }
+  
+  const res = await fetch(`${BASE}/api${url}`, {
+    headers,
     ...options,
   });
   if (!res.ok) {

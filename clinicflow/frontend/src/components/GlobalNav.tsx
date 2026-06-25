@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Activity, User } from 'lucide-react';
+import { Activity, User, LogOut } from 'lucide-react';
 import { BASE } from '../api/client';
 
 function useHealthStatus() {
@@ -51,7 +51,7 @@ export default function GlobalNav() {
           <span className="transition-all duration-300 ease-in-out">Backend API: {s.text}</span>
         </div>
 
-        <div className="flex items-center gap-2.5 pl-4 border-l border-slate-250">
+        <div className="flex items-center gap-2.5 pl-4 border-l border-slate-200">
           <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center border border-slate-200">
             <User className="w-4 h-4 text-slate-500" />
           </div>
@@ -60,6 +60,20 @@ export default function GlobalNav() {
             <p className="text-[10px] text-slate-500 font-medium">Chief Administrator</p>
           </div>
         </div>
+
+        {localStorage.getItem('auth_token') && (
+          <button
+            onClick={() => {
+              localStorage.removeItem('auth_token');
+              window.location.reload();
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-rose-50 text-slate-500 hover:text-rose-600 border border-slate-200 hover:border-rose-200 rounded-lg text-[10px] font-bold transition-all duration-200 shadow-sm"
+            title="Sign Out"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Sign Out</span>
+          </button>
+        )}
       </div>
     </header>
   );

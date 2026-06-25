@@ -2,12 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session as DBSession
 
 from app.core.db import get_db
+from app.api.auth_deps import get_current_user
 from app.schemas.appointment import AppointmentResponse, RescheduleRequest
 from app.services import appointment_service as apt_svc
 from app.services import event_service as evt_svc
 from app.core.constants import EventType
 
-router = APIRouter(prefix="/api/appointments", tags=["appointments"])
+router = APIRouter(prefix="/api/appointments", tags=["appointments"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("", response_model=list[AppointmentResponse])

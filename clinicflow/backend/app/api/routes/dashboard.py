@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session as DBSession
 
 from app.core.db import get_db
+from app.api.auth_deps import get_current_user
 from app.models.appointment import Appointment
 from app.models.call_session import CallSession
 from app.models.event_log import EventLog
@@ -14,7 +15,7 @@ from app.schemas.dashboard import (
 )
 from app.services.session_store import get_collected_data
 
-router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
+router = APIRouter(prefix="/api/dashboard", tags=["dashboard"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("/overview", response_model=DashboardOverview)
