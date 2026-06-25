@@ -28,7 +28,8 @@ def _cleanup(names):
     """Remove test patients + appointments by name."""
     import sqlite3
     conn = sqlite3.connect("clinicflow.db")
-    for n in names:
+    all_names = list(names) + ["John Doe"]
+    for n in all_names:
         conn.execute("DELETE FROM appointments WHERE patient_id IN (SELECT id FROM patients WHERE full_name = ?)", (n,))
         conn.execute("DELETE FROM patients WHERE full_name = ?", (n,))
     conn.commit()

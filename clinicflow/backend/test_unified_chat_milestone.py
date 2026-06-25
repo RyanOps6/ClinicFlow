@@ -17,7 +17,7 @@ def _start_unified() -> int:
     })
     data = resp.json()
     return data["session_id"]
-\n
+
 def _send(session_id: int, message: str) -> dict:
     resp = client.post(f"/api/sessions/{session_id}/message", json={"message": message})
     return resp.json()
@@ -25,7 +25,7 @@ def _send(session_id: int, message: str) -> dict:
 
 # 1. Unified intent detection
 
-def test_unified_detects_bookingabolishing intent to booking flow":
+def test_unified_detects_booking_intent():
     sid = _start_unified()
     data = _send(sid, "I want to book an appointment")
     assert data["workflow_state"].startswith("booking_") or data["workflow_state"] == "greeting"

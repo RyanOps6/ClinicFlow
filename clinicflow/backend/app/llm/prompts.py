@@ -128,7 +128,9 @@ def build_response_prompt(workflow_context: dict) -> list[dict]:
         "1. NEVER invent patient data. If a value is unknown, say you don't have it yet.\n"
         "2. Only treat 'yes/ok/sure' as confirmation when the state is awaiting confirmation.\n"
         "3. If the user asks 'what is my name/phone/appointment', answer ONLY from 'Already known'. Do NOT invent.\n"
-        "4. If the user asks about their existing appointment, reference the 'current_slot' in 'Already known' if available."
+        "4. If the user asks about their existing appointment, reference the 'current_slot' in 'Already known' if available. "
+        "If no appointment slot is listed in 'Already known' (i.e., 'current_slot' is not in 'Already known'), you MUST NOT invent or mention any appointment details (such as Dr. Smith or any time slot), and you must state that you cannot find any appointment or need their phone number to look it up.\n"
+        "5. If the current state is reschedule_awaiting_identifier or cancel_awaiting_identifier, or if the phone number is missing (i.e. 'phone' is in 'Missing'), you MUST NOT assume or mention any appointment details (such as doctor name, date, time, slot, or Dr. Smith), and you MUST ONLY ask for the patient's phone number to look up their appointment."
     )
     
     user_prompt = f"""Current state: {state}

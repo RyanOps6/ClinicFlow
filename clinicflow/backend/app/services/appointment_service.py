@@ -12,13 +12,14 @@ from app.models.patient import Patient
 
 def find_upcoming_by_phone(db: DBSession, phone: str) -> Optional[Appointment]:
     normalized_phone = re.sub(r"\D", "", phone)
-    patient = db.query(Patient).filter(Patient.phone == normalized_phone).first()
-    if not patient:
+    patients = db.query(Patient).filter(Patient.phone == normalized_phone).all()
+    if not patients:
         return None
+    patient_ids = [p.id for p in patients]
     today = datetime.now().strftime("%Y-%m-%d")
     return db.query(Appointment).filter(
         and_(
-            Appointment.patient_id == patient.id,
+            Appointment.patient_id.in_(patient_ids),
             Appointment.status.in_(["booked", "rescheduled"]),
             Appointment.scheduled_date >= today,
         )
@@ -28,13 +29,14 @@ def find_upcoming_by_phone(db: DBSession, phone: str) -> Optional[Appointment]:
 def find_all_upcoming_by_phone(db: DBSession, phone: str) -> list[Appointment]:
     """Find ALL upcoming appointments for a phone number."""
     normalized_phone = re.sub(r"\D", "", phone)
-    patient = db.query(Patient).filter(Patient.phone == normalized_phone).first()
-    if not patient:
+    patients = db.query(Patient).filter(Patient.phone == normalized_phone).all()
+    if not patients:
         return []
+    patient_ids = [p.id for p in patients]
     today = datetime.now().strftime("%Y-%m-%d")
     return db.query(Appointment).filter(
         and_(
-            Appointment.patient_id == patient.id,
+            Appointment.patient_id.in_(patient_ids),
             Appointment.status.in_(["booked", "rescheduled"]),
             Appointment.scheduled_date >= today,
         )

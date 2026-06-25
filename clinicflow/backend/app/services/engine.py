@@ -810,11 +810,42 @@ def _build_response_context(session: CallSession, state: str, fallback_msg: str,
     intent = session.session_type or "booking"
     goals = BOOKING_GOALS if intent == "booking" else RESCHEDULE_GOALS if intent == "reschedule" else CANCEL_GOALS
 
+    missing_fields = []
+    if intent == "booking":
+        if state in (BookingState.GREETING, BookingState.AWAITING_NAME) and not collected.get("full_name"):
+            missing_fields.append("full_name")
+        if state == BookingState.AWAITING_PHONE and not collected.get("phone"):
+            missing_fields.append("phone")
+        if state == BookingState.AWAITING_REASON and not collected.get("reason_for_visit"):
+            missing_fields.append("reason_for_visit")
+        if state == BookingState.AWAITING_SLOT_SELECTION and not collected.get("preferred_slot_or_date"):
+            missing_fields.append("preferred_slot_or_date")
+        if state == BookingState.AWAITING_CONFIRMATION and collected.get("confirmation") is None:
+            missing_fields.append("confirmation")
+    elif intent == "reschedule":
+        if state == RescheduleState.AWAITING_IDENTIFIER:
+            if not collected.get("phone"):
+                missing_fields.append("phone")
+        elif state == RescheduleState.AWAITING_APPOINTMENT_SELECTION and not collected.get("target_appointment_id"):
+            missing_fields.append("target_appointment_id")
+        elif state == RescheduleState.AWAITING_NEW_SLOT and not collected.get("preferred_slot_or_date"):
+            missing_fields.append("preferred_slot_or_date")
+        elif state == RescheduleState.AWAITING_CONFIRMATION and collected.get("confirmation") is None:
+            missing_fields.append("confirmation")
+    elif intent == "cancel":
+        if state == CancelState.AWAITING_IDENTIFIER:
+            if not collected.get("phone"):
+                missing_fields.append("phone")
+        elif state == CancelState.AWAITING_APPOINTMENT_SELECTION and not collected.get("target_appointment_id"):
+            missing_fields.append("target_appointment_id")
+        elif state == CancelState.AWAITING_CONFIRMATION and collected.get("confirmation") is None:
+            missing_fields.append("confirmation")
+
     return {
         "goal": goals.get(state, "continue_conversation"),
         "state": state,
         "known_fields": collected,
-        "missing_fields": [],
+        "missing_fields": missing_fields,
         "urgency_level": session.urgency_level,
         "assistant_goal": goals.get(state, "continue_conversation"),
         "fallback_template": fallback_msg,
