@@ -29,9 +29,7 @@ export default function TabBar({ activeTab, onChange }: Props) {
             >
               <Icon className={`w-4 h-4 transition-transform duration-300 ${isActive ? 'scale-110 text-teal-600' : 'text-slate-500'}`} />
               <span>{label}</span>
-              {isActive && (
-                <span className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-gradient-to-r from-teal-500 to-sky-500 rounded-t" />
-              )}
+              <span className={`absolute bottom-0 left-0 right-0 h-[2.5px] bg-gradient-to-r from-teal-500 to-sky-500 rounded-t transition-all duration-300 origin-center ${isActive ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'}`} />
             </button>
           );
         })}

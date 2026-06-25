@@ -106,7 +106,7 @@ export default function AuditLogPanel({ sessionId }: Props) {
                       </button>
 
                       {isExpanded && (
-                        <div className="space-y-3 pl-4 pt-1 text-[10px]">
+                        <div className="space-y-3 pl-4 pt-1 text-[10px] animate-fadeIn">
                           {log.llm_payload_sent && (
                             <div>
                               <div className="text-slate-500 mb-1">Payload Sent:</div>

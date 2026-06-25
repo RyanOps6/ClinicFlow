@@ -38,14 +38,14 @@ export default function LiveSessionMonitor({ intent, collectedData, workflowStat
         {/* Intent Status Badge */}
         <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
           <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Active Intent</p>
-          <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold ${ic.bg} ${ic.text}`}>
+          <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-300 ease-in-out ${ic.bg} ${ic.text}`}>
             {ic.label}
           </span>
           <p className="text-xs text-slate-600 mt-3.5 flex items-center gap-1">
-            State: <span className="font-bold text-slate-800">{workflowState}</span>
+            State: <span className="font-bold text-slate-800 transition-all duration-300 ease-in-out">{workflowState}</span>
           </p>
           <p className="text-xs text-slate-600 flex items-center gap-1">
-            Status: <span className={`font-bold ${status === 'completed' ? 'text-emerald-600' : status === 'active' ? 'text-teal-600' : 'text-slate-500'}`}>{status}</span>
+            Status: <span className={`font-bold transition-all duration-300 ease-in-out ${status === 'completed' ? 'text-emerald-600' : status === 'active' ? 'text-teal-600' : 'text-slate-500'}`}>{status}</span>
           </p>
         </div>
 
@@ -59,7 +59,7 @@ export default function LiveSessionMonitor({ intent, collectedData, workflowStat
                   const value = collectedData?.[key];
                   return (
                     <tr key={key} className="border-b border-slate-200 last:border-b-0">
-                      <td className="px-4 py-3 w-40">
+                       <td className="px-4 py-3 w-40">
                         <div className="flex items-center gap-2 text-slate-500">
                           <Icon className="w-3.5 h-3.5" />
                           <span className="text-xs font-semibold">{label}</span>
@@ -67,9 +67,9 @@ export default function LiveSessionMonitor({ intent, collectedData, workflowStat
                       </td>
                       <td className="px-4 py-3">
                         {value ? (
-                          <span className="text-sm text-slate-800 font-bold">{String(value)}</span>
+                          <span className="text-sm text-slate-800 font-bold transition-all duration-300 ease-in-out">{String(value)}</span>
                         ) : (
-                          <span className="text-xs italic text-slate-400">Awaiting input...</span>
+                          <span className="text-xs italic text-slate-400 transition-all duration-300 ease-in-out">Awaiting input...</span>
                         )}
                       </td>
                     </tr>

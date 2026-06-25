@@ -27,6 +27,21 @@
   }
 }
 
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
 @layer utilities {
   .scrollbar-thin {
     scrollbar-width: thin;
@@ -62,7 +77,7 @@
     border-radius: 16px !important;
     /* Multi-layered shadows for 3D shadow depth */
     box-shadow: 0 10px 30px -10px rgba(13, 148, 136, 0.1), 0 20px 40px -15px rgba(0, 0, 0, 0.08) !important;
-    transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.4s ease !important;
+    transition: all 0.3s ease-in-out, transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out !important;
     transform-style: preserve-3d;
   }
 

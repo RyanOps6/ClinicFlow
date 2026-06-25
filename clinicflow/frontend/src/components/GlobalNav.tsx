@@ -35,7 +35,7 @@ export default function GlobalNav() {
   const s = statusConfig[health];
 
   return (
-    <header className="backdrop-blur-md bg-white/75 border-b border-slate-200 text-slate-800 px-6 py-3 flex items-center justify-between relative z-10 shadow-sm">
+    <header className="sticky top-0 z-50 w-full backdrop-blur-md bg-white/75 border-b border-slate-200 text-slate-800 px-6 py-3 flex items-center justify-between shadow-sm">
       <div className="flex items-center gap-2.5">
         <div className="w-8 h-8 bg-gradient-to-tr from-teal-500 to-sky-500 rounded-lg flex items-center justify-center shadow-md shadow-teal-500/10">
           <Activity className="w-5 h-5 text-white animate-pulse" />
@@ -46,9 +46,9 @@ export default function GlobalNav() {
       </div>
 
       <div className="flex items-center gap-4">
-        <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full ${s.bg} text-xs font-semibold`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${s.color} animate-pulse`} />
-          <span>Backend API: {s.text}</span>
+        <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full ${s.bg} text-xs font-semibold transition-all duration-300 ease-in-out`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${s.color} animate-pulse transition-all duration-300 ease-in-out`} />
+          <span className="transition-all duration-300 ease-in-out">Backend API: {s.text}</span>
         </div>
 
         <div className="flex items-center gap-2.5 pl-4 border-l border-slate-250">

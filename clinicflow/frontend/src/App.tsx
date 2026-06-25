@@ -22,7 +22,7 @@ function DashboardContent() {
   });
 
   return (
-    <div className="min-h-screen text-slate-900 flex flex-col relative overflow-hidden font-sans">
+    <div className="min-h-screen text-slate-900 flex flex-col relative lg:overflow-hidden overflow-y-auto font-sans">
       {/* Pristine Clinical Ambient background glows */}
       <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-teal-200/15 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-sky-200/15 blur-[120px] pointer-events-none" />
@@ -38,16 +38,16 @@ function DashboardContent() {
 
         {activeTab === 'playground' && (
           <div 
-            className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-13rem)]"
+            className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-4 lg:p-8 h-auto lg:h-[calc(100vh-13rem)] animate-fadeIn"
             style={{ perspective: '1200px', transformStyle: 'preserve-3d' }}
           >
-            <div className="flex-1 lg:flex-[3] min-h-0" style={{ transformStyle: 'preserve-3d' }}>
+            <div className="h-[500px] lg:h-full min-h-0" style={{ transformStyle: 'preserve-3d' }}>
               <ChatInterface onSessionUpdate={setSessionData} />
             </div>
-            <div className="flex-1 lg:flex-[3.5] min-h-0" style={{ transformStyle: 'preserve-3d' }}>
+            <div className="h-[350px] lg:h-full min-h-0" style={{ transformStyle: 'preserve-3d' }}>
               <AuditLogPanel sessionId={sessionData.sessionId} />
             </div>
-            <div className="flex-1 lg:flex-[3.5] min-h-0" style={{ transformStyle: 'preserve-3d' }}>
+            <div className="h-[350px] lg:h-full min-h-0" style={{ transformStyle: 'preserve-3d' }}>
               <LiveSessionMonitor
                 intent={sessionData.intent}
                 collectedData={sessionData.collectedData}
