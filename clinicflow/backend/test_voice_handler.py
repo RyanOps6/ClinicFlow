@@ -29,9 +29,9 @@ def test_voice_turn_happy_path():
         assert os.path.exists(audio_path)
         assert os.path.getsize(audio_path) > 0
         
-        # Verify performance metrics: local TTS should be fast (< 3s), total pipeline (with LLM API) should be reasonable (< 10s)
-        assert result["tts_duration_seconds"] < 3.0
-        assert result["total_duration_seconds"] < 10.0
+        # Verify performance metrics: network Edge-TTS should be reasonable (< 15s), total pipeline (< 20s)
+        assert result["tts_duration_seconds"] < 15.0
+        assert result["total_duration_seconds"] < 20.0
         
         # Clean up audio file
         if os.path.exists(audio_path):

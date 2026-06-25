@@ -82,3 +82,17 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
 export async function getSessionAuditLogs(sessionId: number): Promise<any[]> {
   return request(`/sessions/${sessionId}/audit-logs`);
 }
+
+export async function getSessions(page = 1, limit = 20): Promise<SessionSnapshot[]> {
+  return request(`/sessions?page=${page}&limit=${limit}`);
+}
+
+export async function getSessionMessages(sessionId: number): Promise<any[]> {
+  return request(`/sessions/${sessionId}/messages`);
+}
+
+export async function cancelAppointmentPatch(appointmentId: number): Promise<AppointmentResponse> {
+  return request(`/appointments/${appointmentId}/cancel`, {
+    method: 'PATCH',
+  });
+}

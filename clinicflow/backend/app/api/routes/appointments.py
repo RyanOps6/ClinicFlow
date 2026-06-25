@@ -67,3 +67,29 @@ def cancel_appointment(appointment_id: int, db: DBSession = Depends(get_db)):
         notes=appointment.notes,
         created_at=appointment.created_at,
     )
+
+
+@router.patch("/{appointment_id}/cancel", response_model=AppointmentResponse)
+def cancel_appointment_patch(appointment_id: int, db: DBSession = Depends(get_db)):
+    appointment = apt_svc.cancel_appointment(db, appointment_id)
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    patient = appointment.patient
+    evt_svc.log_event(db, 0, EventType.APPOINTMENT_CANCELLED, {
+        "appointment_id": appointment.id,
+    })
+
+    return AppointmentResponse(
+        id=appointment.id,
+        patient_id=appointment.patient_id,
+        patient_name=patient.full_name if patient else None,
+        appointment_type=appointment.appointment_type,
+        doctor_name=appointment.doctor_name,
+        scheduled_date=appointment.scheduled_date,
+        scheduled_time=appointment.scheduled_time,
+        status=appointment.status,
+        reason_for_visit=appointment.reason_for_visit,
+        notes=appointment.notes,
+        created_at=appointment.created_at,
+    )

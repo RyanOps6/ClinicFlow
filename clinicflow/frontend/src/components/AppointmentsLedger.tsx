@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Calendar, User, Stethoscope, Clock, CheckCircle2, XCircle } from 'lucide-react';
+import { Calendar, User, Stethoscope, Clock, CheckCircle2, XCircle, Ban } from 'lucide-react';
 import type { AppointmentResponse } from '../types';
-import { getAppointments } from '../api/client';
+import { getAppointments, cancelAppointmentPatch } from '../api/client';
 
 export default function AppointmentsLedger() {
   const [appointments, setAppointments] = useState<AppointmentResponse[]>([]);
@@ -23,72 +23,115 @@ export default function AppointmentsLedger() {
     fetch();
   }, [fetch]);
 
+  const handleCancel = async (id: number) => {
+    try {
+      const updated = await cancelAppointmentPatch(id);
+      setAppointments(prev => prev.map(a => a.id === id ? updated : a));
+    } catch (err) {
+      console.error('Failed to cancel appointment:', err);
+      alert('Failed to cancel appointment');
+    }
+  };
+
   const statusConfig: Record<string, { label: string; bg: string; text: string; icon: React.ElementType }> = {
-    booked: { label: 'Upcoming', bg: 'bg-medical-50', text: 'text-medical-700', icon: CheckCircle2 },
-    rescheduled: { label: 'Rescheduled', bg: 'bg-amber-50', text: 'text-amber-700', icon: Clock },
-    cancelled: { label: 'Cancelled', bg: 'bg-red-50', text: 'text-red-700', icon: XCircle },
-    completed: { label: 'Completed', bg: 'bg-emerald-50', text: 'text-emerald-700', icon: CheckCircle2 },
+    booked: { label: 'Upcoming', bg: 'bg-teal-50 border border-teal-200', text: 'text-teal-700', icon: CheckCircle2 },
+    rescheduled: { label: 'Rescheduled', bg: 'bg-amber-50 border border-amber-200', text: 'text-amber-700', icon: Clock },
+    cancelled: { label: 'Cancelled', bg: 'bg-rose-50 border border-rose-200', text: 'text-rose-700', icon: XCircle },
+    completed: { label: 'Completed', bg: 'bg-emerald-50 border border-emerald-200', text: 'text-emerald-700', icon: CheckCircle2 },
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fadeIn relative z-10">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-medical-500" />
-          Appointments Ledger
+        <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2 uppercase tracking-wider">
+          <Calendar className="w-4 h-4 text-teal-600 animate-pulse" />
+          Appointments Ledger & Active Cancellations
         </h3>
-        <span className="text-xs text-slate-400">{appointments.length} total</span>
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 border border-slate-200 text-slate-650">
+          {appointments.length} total
+        </span>
       </div>
 
       {loading ? (
-        <div className="p-8 text-center text-slate-400 text-sm">Loading appointments...</div>
+        <div className="py-12 text-center text-slate-450 text-xs font-mono">Loading appointment database...</div>
       ) : appointments.length === 0 ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-400 text-sm shadow-sm">
-          No appointments found. Start a booking session to create one.
+        <div className="clinic-card-3d p-8 text-center text-slate-500 text-xs rounded-xl">
+          No appointments found in database. Start receptionist playground simulation to book slots.
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-          {appointments.map((a) => {
-            const sc = statusConfig[a.status] || { label: a.status, bg: 'bg-slate-50', text: 'text-slate-600', icon: Clock };
-            const Icon = sc.icon;
-            return (
-              <div key={a.id} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
-                <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-slate-400" />
-                    <span className="text-sm font-semibold text-slate-700">{a.scheduled_date}</span>
-                  </div>
-                  <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${sc.bg} ${sc.text}`}>
-                    <Icon className="w-3 h-3" />
-                    {sc.label}
-                  </span>
-                </div>
-                <div className="p-5 space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-medical-50 rounded-full flex items-center justify-center flex-shrink-0">
-                      <User className="w-5 h-5 text-medical-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-slate-800">{a.patient_name ?? 'Unknown Patient'}</p>
-                      <p className="text-xs text-slate-500">{a.reason_for_visit}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4 pt-2 border-t border-slate-50">
-                    <div className="flex items-center gap-1.5 text-sm text-slate-600">
-                      <Clock className="w-3.5 h-3.5 text-slate-400" />
-                      <span>{a.scheduled_time}</span>
-                    </div>
-                    {a.doctor_name && (
-                      <div className="flex items-center gap-1.5 text-sm text-slate-600">
-                        <Stethoscope className="w-3.5 h-3.5 text-slate-400" />
-                        <span>{a.doctor_name}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+        <div className="clinic-card-3d rounded-2xl overflow-hidden bg-white">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50">
+                  <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Appointment ID</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Patient Name</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Reason for Visit</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Schedule Details</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Doctor</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-250">
+                {appointments.map((a) => {
+                  const sc = statusConfig[a.status] || { label: a.status, bg: 'bg-slate-100 border border-slate-200', text: 'text-slate-600', icon: Clock };
+                  const Icon = sc.icon;
+                  const isBooked = a.status === 'booked' || a.status === 'rescheduled';
+                  return (
+                    <tr key={a.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-6 py-4.5 text-xs font-semibold text-slate-500 font-mono">#{a.id}</td>
+                      <td className="px-6 py-4.5">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500">
+                            <User className="w-3.5 h-3.5" />
+                          </div>
+                          <span className="text-xs font-bold text-slate-800">{a.patient_name ?? 'Unknown Patient'}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4.5 text-xs text-slate-650 max-w-[200px] truncate">{a.reason_for_visit ?? '—'}</td>
+                      <td className="px-6 py-4.5 text-xs text-slate-650">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-bold text-slate-800">{a.scheduled_date}</span>
+                          <span className="text-[10px] text-slate-450 flex items-center gap-1 font-mono">
+                            <Clock className="w-2.5 h-2.5" />
+                            {a.scheduled_time}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4.5 text-xs text-slate-650">
+                        {a.doctor_name ? (
+                          <div className="flex items-center gap-1">
+                            <Stethoscope className="w-3 h-3 text-slate-400" />
+                            <span>{a.doctor_name}</span>
+                          </div>
+                        ) : '—'}
+                      </td>
+                      <td className="px-6 py-4.5">
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.75 rounded-full text-[10px] font-bold tracking-wide uppercase ${sc.bg} ${sc.text}`}>
+                          <Icon className="w-2.5 h-2.5" />
+                          {sc.label}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4.5 text-right">
+                        {isBooked ? (
+                          <button
+                            onClick={() => handleCancel(a.id)}
+                            className="inline-flex items-center gap-1 px-3 py-1 bg-rose-50 hover:bg-rose-100/80 text-rose-700 border border-rose-200 hover:border-rose-300 rounded text-[10px] font-bold transition-all duration-300 btn-3d"
+                          >
+                            <Ban className="w-3 h-3" />
+                            Cancel Appointment
+                          </button>
+                        ) : (
+                          <span className="text-[10px] text-slate-400 font-semibold italic">Non-modifiable</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

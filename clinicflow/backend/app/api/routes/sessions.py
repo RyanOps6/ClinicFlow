@@ -10,6 +10,7 @@ from app.schemas.session import (
     SessionSnapshot,
     StartSessionRequest,
     StartSessionResponse,
+    MessageEntry,
 )
 from app.services import conversation_service as conv_svc
 from app.services.session_store import get_session, get_collected_data, get_transcript, get_offered_slots
@@ -92,6 +93,49 @@ def get_session_audit_logs(session_id: int, db: DBSession = Depends(get_db)):
             "created_at": log.created_at.isoformat() if log.created_at else None
         }
         for log in logs
+    ]
+
+
+@router.get("", response_model=list[SessionSnapshot])
+def list_sessions(page: int = 1, limit: int = 20, db: DBSession = Depends(get_db)):
+    from app.models.call_session import CallSession
+    skip = (page - 1) * limit
+    sessions = db.query(CallSession).order_by(CallSession.created_at.desc()).offset(skip).limit(limit).all()
+    
+    return [
+        SessionSnapshot(
+            id=s.id,
+            session_uid=s.session_uid,
+            session_type=s.session_type,
+            channel=s.channel,
+            status=s.status,
+            intent=s.intent or "unknown",
+            workflow_state=s.workflow_state,
+            collected_data=get_collected_data(s),
+            transcript=get_transcript(s),
+            offered_slots=get_offered_slots(s),
+            selected_slot=s.selected_slot,
+            summary_text=s.summary_text,
+            urgency_level=s.urgency_level,
+            started_at=s.started_at,
+            ended_at=s.ended_at,
+            created_at=s.created_at,
+        )
+        for s in sessions
+    ]
+
+
+@router.get("/{session_id}/messages", response_model=list[MessageEntry])
+def get_session_messages(session_id: int, db: DBSession = Depends(get_db)):
+    session = get_session(db, session_id)
+    if not session:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Session not found")
+        
+    transcript = get_transcript(session)
+    return [
+        MessageEntry(role=m.get("role", "user"), content=m.get("content", ""))
+        for m in transcript
     ]
 
 

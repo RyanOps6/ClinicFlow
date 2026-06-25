@@ -26,10 +26,11 @@ def transcribe_audio(audio_chunk: bytes) -> str:
 
 def synthesize_text_to_speech(text: str, output_path: str) -> float:
     """
-    Convert text to speech and save as a .wav file using pyttsx3.
+    Convert text to speech and save as a wav/mp3 file using Edge-TTS.
     Measures the duration of the synthesis and returns it in seconds.
     """
-    import pyttsx3
+    import asyncio
+    import edge_tts
     
     dir_name = os.path.dirname(output_path)
     if dir_name:
@@ -37,16 +38,8 @@ def synthesize_text_to_speech(text: str, output_path: str) -> float:
         
     start_time = time.time()
     
-    # Initialize engine locally per call to avoid threading issues
-    engine = pyttsx3.init()
-    try:
-        engine.save_to_file(text, output_path)
-        engine.runAndWait()
-    finally:
-        try:
-            engine.stop()
-        except Exception:
-            pass
+    communicate = edge_tts.Communicate(text, "en-US-AvaNeural", rate="+15%")
+    asyncio.run(communicate.save(output_path))
             
     elapsed_time = time.time() - start_time
     return elapsed_time
