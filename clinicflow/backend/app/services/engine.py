@@ -1382,8 +1382,16 @@ class ConversationEngine:
         use_fallback = False
         if ai_response:
             ai_lower = ai_response.lower()
-            if "1." in fallback_response and "1." not in ai_response:
-                use_fallback = True
+            if "1." in fallback_response:
+                if "1." not in ai_response:
+                    use_fallback = True
+                else:
+                    lines = fallback_response.splitlines()
+                    first_slot_line = next((l for l in lines if l.strip().startswith("1. ")), None)
+                    if first_slot_line:
+                        first_slot_text = first_slot_line.strip().split("1. ", 1)[-1].strip()
+                        if first_slot_text not in ai_response:
+                            use_fallback = True
             elif "couldn't find" in fallback_response.lower() and not any(k in ai_lower for k in ["couldn't find", "cannot find", "double-check", "no"]):
                 use_fallback = True
             elif "already" in fallback_response.lower() and not any(k in ai_lower for k in ["already", "existing"]):

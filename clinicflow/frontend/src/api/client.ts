@@ -6,10 +6,12 @@ import type {
   StartSessionResponse,
 } from '../types';
 
-const BASE = '/api';
+export const BASE = import.meta.env.PROD
+  ? 'https://clinicflow-backend-h4w4.onrender.com'
+  : '';
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${url}`, {
+  const res = await fetch(`${BASE}/api${url}`, {
     headers: { 'Content-Type': 'application/json' },
     ...options,
   });

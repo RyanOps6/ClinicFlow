@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Activity, User } from 'lucide-react';
+import { BASE } from '../api/client';
 
 function useHealthStatus() {
   const [status, setStatus] = useState<'operational' | 'degraded' | 'unknown'>('unknown');
@@ -8,7 +9,7 @@ function useHealthStatus() {
     let isActive = true;
     const check = async () => {
       try {
-        const res = await fetch('/api/health', { signal: AbortSignal.timeout(5000) });
+        const res = await fetch(`${BASE}/api/health`, { signal: AbortSignal.timeout(5000) });
         if (isActive) setStatus(res.ok ? 'operational' : 'degraded');
       } catch {
         if (isActive) setStatus('degraded');
