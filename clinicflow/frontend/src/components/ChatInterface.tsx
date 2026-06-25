@@ -72,8 +72,7 @@ export default function ChatInterface({ onSessionUpdate }: Props) {
   const startVoiceCall = useCallback(() => {
     if (!sessionId) return;
     
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//localhost:8000/api/sessions/ws/${sessionId}`;
+    const wsUrl = `wss://clinicflow-backend-h4w4.onrender.com/api/sessions/ws/${sessionId}`;
     
     let ws: WebSocket;
     try {

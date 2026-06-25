@@ -113,6 +113,7 @@ def build_response_prompt(workflow_context: dict) -> list[dict]:
     last_msg = workflow_context.get("last_user_message", "")
     urgency = workflow_context.get("urgency_level", "none")
     active_workflow = workflow_context.get("active_workflow", "booking")
+    history = workflow_context.get("history", [])
 
     sys_prompt = (
         "You are a warm, professional clinic receptionist. "
@@ -130,24 +131,30 @@ def build_response_prompt(workflow_context: dict) -> list[dict]:
         "3. If the user asks 'what is my name/phone/appointment', answer ONLY from 'Already known'. Do NOT invent.\n"
         "4. If the user asks about their existing appointment, reference the 'current_slot' in 'Already known' if available. "
         "If no appointment slot is listed in 'Already known' (i.e., 'current_slot' is not in 'Already known'), you MUST NOT invent or mention any appointment details (such as Dr. Smith or any time slot), and you must state that you cannot find any appointment or need their phone number to look it up.\n"
-        "5. If the current state is reschedule_awaiting_identifier or cancel_awaiting_identifier, or if the phone number is missing (i.e. 'phone' is in 'Missing'), you MUST NOT assume or mention any appointment details (such as doctor name, date, time, slot, or Dr. Smith), and you MUST ONLY ask for the patient's phone number to look up their appointment."
+        "5. If the current state is reschedule_awaiting_identifier or cancel_awaiting_identifier, or if the phone number is missing (i.e. 'phone' is in 'Missing'), you MUST NOT assume or mention any appointment details (such as doctor name, date, time, slot, or Dr. Smith), and you MUST ONLY ask for the patient's phone number to look up their appointment.\n"
+        "6. If the 'fallback_template' starts with 'Here are the available slots' or contains a list of slots, you MUST include the exact phrase 'Here are the available slots for this week:' or 'Here are the available slots:' followed by the numbered list of slots from the fallback_template exactly.\n"
+        "7. If the 'fallback_template' contains 'couldn't find' or 'cannot find', you MUST output the exact sentence from the fallback_template: 'I couldn't find any upcoming appointments linked to that number. Could you double-check the phone number?' and nothing else."
     )
     
-    user_prompt = f"""Current state: {state}
-Goal: {goal}
-Workflow: {active_workflow}
-Urgency: {urgency}
-Already known: {json.dumps(known_fields)}
-Missing: {missing_fields}
-Conflicts: {conflicts}
-Patient just said: '{last_msg}'
-
-Write your reply as the receptionist."""
-
-    return [
-        {"role": "system", "content": sys_prompt},
-        {"role": "user", "content": user_prompt}
-    ]
+    messages = [{"role": "system", "content": sys_prompt}]
+    
+    for h in history:
+        messages.append({"role": h["role"], "content": h["content"]})
+        
+    context_msg = (
+        f"[System Context - Use this to formulate your response]\n"
+        f"Current state: {state}\n"
+        f"Goal: {goal}\n"
+        f"Workflow: {active_workflow}\n"
+        f"Urgency: {urgency}\n"
+        f"Already known: {json.dumps(known_fields)}\n"
+        f"Missing: {missing_fields}\n"
+        f"Conflicts: {conflicts}\n\n"
+        f"Please write the receptionist's response now, continuing the conversation naturally based on the history above and adhering to the STRICT RULES."
+    )
+    messages.append({"role": "user", "content": context_msg})
+    
+    return messages
 
 
 def build_summary_prompt(session_data: dict) -> list[dict]:

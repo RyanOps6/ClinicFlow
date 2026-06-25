@@ -1,4 +1,5 @@
 import json
+import os
 import time
 import logging
 from typing import Optional
@@ -13,13 +14,29 @@ logger = logging.getLogger(__name__)
 class LLMClient:
     def __init__(self):
         self.client = None
-        self.provider = (settings.llm_provider or "openai").lower()
-        self.model = settings.llm_model or settings.openai_model
+        self.provider = (os.environ.get("LLM_PROVIDER") or settings.llm_provider or "openai").lower()
+        self.model = (
+            os.environ.get("MODEL_NAME")
+            or settings.llm_model
+            or settings.openai_model
+        )
         self._init_client()
 
     def _init_client(self):
-        api_key = settings.llm_api_key or settings.openai_api_key
-        base_url = settings.llm_base_url or settings.openai_base_url
+        api_key = (
+            os.environ.get("NVIDIA_API_KEY")
+            or settings.llm_api_key
+            or settings.openai_api_key
+        )
+        base_url = (
+            settings.llm_base_url
+            or settings.openai_base_url
+            or (
+                "https://integrate.api.nvidia.com/v1"
+                if os.environ.get("NVIDIA_API_KEY")
+                else None
+            )
+        )
         
         if not api_key:
             return

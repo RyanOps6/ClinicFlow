@@ -1371,32 +1371,28 @@ class ConversationEngine:
         static_response = _generate_static_response(db, session, new_state, collected)
         fallback_response = fallback_msg or static_response
 
-        # When fallback_msg is explicitly set by side-effect processing
-        # (e.g., "couldn't find appointment"), use it directly — don't let AI override
-        if fallback_msg:
-            assistant_message = fallback_msg
-        # If no fields were extracted for this message, skip AI — it's likely
-        # a side question or unrecognized input. Use the static ask-for-field.
-        elif not fallback_msg:
-            extracted_any = False
-            if ai_result:
-                extracted_any = any([ai_result.full_name, ai_result.phone,
-                                    ai_result.preferred_slot_or_date,
-                                    ai_result.confirmation is not None])
-            if not extracted_any and fallback_result:
-                extracted_any = any([fallback_result.full_name, fallback_result.phone,
-                                    fallback_result.preferred_slot_or_date,
-                                    fallback_result.confirmation is not None])
-            if not extracted_any and static_response:
-                assistant_message = static_response
-            else:
-                wc = _build_response_context(session, new_state, fallback_response, message)
-                ai_response = ai_assistant_service.generate_response(wc)
-                assistant_message = ai_response if ai_response else fallback_response
+        # Always build response context and call the LLM, bypassing hardcoded fallback loops.
+        # Include the conversation history array. Use fallback_response as fallback if LLM is unavailable or fails.
+        wc = _build_response_context(session, new_state, fallback_response, message)
+        wc["history"] = store.get_transcript(session)
+        
+        ai_response = ai_assistant_service.generate_response(wc)
+        
+        # Post-processing validation: Ensure LLM response contains critical info if present in fallback_response
+        use_fallback = False
+        if ai_response:
+            ai_lower = ai_response.lower()
+            if "1." in fallback_response and "1." not in ai_response:
+                use_fallback = True
+            elif "couldn't find" in fallback_response.lower() and not any(k in ai_lower for k in ["couldn't find", "cannot find", "double-check", "no"]):
+                use_fallback = True
+            elif "already" in fallback_response.lower() and not any(k in ai_lower for k in ["already", "existing"]):
+                use_fallback = True
+
+        if ai_response and not use_fallback:
+            assistant_message = ai_response
         else:
-            wc = _build_response_context(session, new_state, fallback_response, message)
-            ai_response = ai_assistant_service.generate_response(wc)
-            assistant_message = ai_response if ai_response else fallback_response
+            assistant_message = fallback_response
 
         if not assistant_message:
             assistant_message = "I'm ready to help. Could you tell me what you need?"
