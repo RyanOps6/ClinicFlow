@@ -8,6 +8,8 @@ Thumbs.db
 # ---------- Environment / Secrets ----------
 .env
 .env.*
+**/.env
+**/.env.*
 !.env.example
 !.env.local.example
 !.env.production.example
@@ -19,8 +21,11 @@ Thumbs.db
 
 # ---------- Databases / DB artifacts ----------
 *.db
+**/*.db
 *.sqlite
+**/*.sqlite
 *.sqlite3
+**/*.sqlite3
 clinicflow.db
 **/clinicflow*.db
 **/*.db-journal
@@ -29,12 +34,15 @@ clinicflow.db
 
 # ---------- Python ----------
 __pycache__/
+**/__pycache__/
 *.py[cod]
 *.pyd
 *.pyo
 *.egg-info/
 dist/
+**/dist/
 build/
+**/build/
 *.whl
 pip-wheel-metadata/
 *.coverage
@@ -45,17 +53,23 @@ htmlcov/
 .ruff_cache/
 .coverage.*
 venv/
+**/venv/
 .venv/
+**/.venv/
 ENV/
 env/
+**/env/
 
 # ---------- Node / Frontend ----------
 node_modules/
+**/node_modules/
 frontend/node_modules/
 
 # Vite / build outputs
 dist/
+**/dist/
 build/
+**/build/
 coverage/
 .vite/
 
