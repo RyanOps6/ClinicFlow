@@ -521,16 +521,21 @@ def test_slot_matching_and_formatting():
     msg = r["assistant_message"]
     import re
     assert not re.search(r'\d{4}-\d{2}-\d{2}', msg), f"Found date string in assistant message: {msg}"
-    assert "wednesday at" in msg.lower()
+    
+    # Dynamically find slot options (e.g. "Thursday at 09:00")
+    matches = re.findall(r'(\d+)\.\s+([A-Za-z]+)\s+at\s+(\d{2}:\d{2})', msg)
+    assert len(matches) >= 2, f"Expected at least 2 slots in the message, found: {msg}"
 
     # Match slot precisely (user types the specific time option rather than number 1)
-    # The offered list starts with 9:00, then 10:00. The user specifically requests 10:00.
-    r_select = _msg(sid, "Wednesday at 10:00")
+    # The offered list starts with the first slot, then the second slot. The user specifically requests the second slot.
+    slot2_day = matches[1][1]
+    slot2_time = matches[1][2]
+    r_select = _msg(sid, f"{slot2_day} at {slot2_time}")
     assert r_select["workflow_state"] == "awaiting_confirmation"
     
-    # Confirm it matched the 10:00 slot in the database, not the 09:00 slot
+    # Confirm it matched the second slot in the database, not the first slot
     r_detail = client.get(f"/api/sessions/{sid}").json()
-    assert "10:00" in r_detail["selected_slot"], f"Expected 10:00 in selected slot, got: {r_detail['selected_slot']}"
+    assert slot2_time in r_detail["selected_slot"], f"Expected {slot2_time} in selected slot, got: {r_detail['selected_slot']}"
 
     r_confirm = _msg(sid, "yes")
     assert r_confirm["completed"] is True

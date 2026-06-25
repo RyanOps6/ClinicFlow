@@ -70,11 +70,22 @@ export default function ChatInterface({ onSessionUpdate }: Props) {
     
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//localhost:8000/api/sessions/ws/${sessionId}`;
-    const ws = new WebSocket(wsUrl);
+    
+    let ws: WebSocket;
+    try {
+      ws = new WebSocket(wsUrl);
+    } catch (e: any) {
+      const errStr = e?.message || String(e);
+      console.error(`WebSocket creation failed for URL ${wsUrl}:`, e);
+      console.error(`CONNECTION_ERROR: ${errStr}`);
+      alert("Failed to establish WebSocket connection.");
+      return;
+    }
+    
     wsRef.current = ws;
     
     ws.onopen = () => {
-      console.log("WebSocket connected");
+      console.log("WebSocket connection established successfully on:", wsUrl);
       setIsCallActive(true);
     };
     
@@ -130,13 +141,27 @@ export default function ChatInterface({ onSessionUpdate }: Props) {
       }
     };
     
-    ws.onclose = () => {
+    const handleWsClose = (event: CloseEvent) => {
+      console.log(`WebSocket closed. code=${event.code}, reason=${event.reason || 'none'}, clean=${event.wasClean}`);
+      if (!event.wasClean) {
+        console.error(`CONNECTION_ERROR: WebSocket premature disconnect or abnormal closure. Code: ${event.code}, Reason: ${event.reason || 'none'}`);
+      }
       setIsCallActive(false);
     };
     
-    ws.onerror = (err) => {
-      console.error("WebSocket error:", err);
+    const handleWsError = (err: any) => {
+      console.error("WebSocket connection error occurred:", err);
+      const errStr = err?.message || (err instanceof Event ? "WebSocket error event triggered" : String(err));
+      console.error(`CONNECTION_ERROR: ${errStr}`);
     };
+    
+    ws.onclose = handleWsClose;
+    (ws as any).onClose = handleWsClose;
+    ws.addEventListener('close', handleWsClose);
+    
+    ws.onerror = handleWsError;
+    (ws as any).onError = handleWsError;
+    ws.addEventListener('error', handleWsError);
     
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
@@ -149,26 +174,65 @@ export default function ChatInterface({ onSessionUpdate }: Props) {
     recognition.interimResults = false;
     recognition.lang = 'en-US';
     
+    const handleSpeechStart = () => {
+      console.log("Speech recognition service started (listening to microphone)...");
+    };
+    
+    recognition.onstart = handleSpeechStart;
+    (recognition as any).onStart = handleSpeechStart;
+    recognition.addEventListener('start', handleSpeechStart);
+    
     recognition.onresult = (event: any) => {
       const resultText = event.results[event.results.length - 1][0].transcript.trim();
+      console.log(`Speech recognition result captured: "${resultText}"`);
       if (resultText && ws.readyState === WebSocket.OPEN) {
         setMessages(prev => [...prev, { role: 'user', content: resultText }]);
         const encoder = new TextEncoder();
         const dataBytes = encoder.encode(resultText);
+        console.log("Streaming transcribed text bytes to backend...");
         ws.send(dataBytes);
+      } else {
+        console.warn("Speech captured, but WebSocket is not open. State:", ws.readyState);
       }
     };
     
-    recognition.onend = () => {
+    const handleSpeechError = (event: any) => {
+      const errorMsg = event.error;
+      console.error("Speech recognition error occurred:", errorMsg, event.message || "");
+      if (errorMsg === 'not-allowed') {
+        console.error("MICROPHONE_DENIED: Microphone access denied by user or system policy. Error code: not-allowed");
+      } else {
+        console.error(`SPEECH_RECOGNITION_ERROR: ${errorMsg}`);
+      }
+    };
+    
+    recognition.onerror = handleSpeechError;
+    (recognition as any).onError = handleSpeechError;
+    recognition.addEventListener('error', handleSpeechError);
+    
+    const handleSpeechEnd = () => {
+      console.log("Speech recognition service stopped.");
       if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        console.log("Re-initiating speech recognition listener...");
         try {
           recognition.start();
-        } catch (e) {}
+        } catch (e) {
+          console.error("Failed to restart speech recognition:", e);
+        }
       }
     };
     
+    recognition.onend = handleSpeechEnd;
+    (recognition as any).onEnd = handleSpeechEnd;
+    recognition.addEventListener('end', handleSpeechEnd);
+    
     recognitionRef.current = recognition;
-    recognition.start();
+    try {
+      recognition.start();
+    } catch (e: any) {
+      console.error("Failed to start speech recognition initial stream:", e);
+      console.error(`SPEECH_RECOGNITION_START_ERROR: ${e?.message || String(e)}`);
+    }
     
   }, [sessionId, onSessionUpdate, intent, collectedData, endVoiceCall]);
 
