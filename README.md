@@ -7,9 +7,13 @@ ClinicFlow is an intelligent virtual receptionist and clinic chatbot designed to
 ## 🌟 Key Features
 
 * **Dynamic Conversational Gating**: Acts like a natural receptionist. Gathers patient identity (Name & Phone) dynamically, processes smalltalk, handles intent shifts fluidly, and only initiates a workflow when explicitly requested.
+* **Unified Speech & Text WebSocket Streaming**: Real-time bi-directional streaming over active WebSocket channels (`/api/sessions/ws/{session_id}`). Text entries and voice transcriptions are immediately transmitted as binary payloads to allow concurrent text/speech processing.
+* **Telemetry & Connection State Indicators**: Interactive green status indicators and active `WebSocket Stream: Connected` badges track socket handshakes automatically on session initialization.
+* **Quiet Speech-to-Text Loop**: Seamless background microphone reconnect loops using the Web Speech API without audible beep loops, chime alerts, or recording start/stop tone disruptions.
 * **Structured Developer Audit Logs**: Live dashboard-integrated developer log panel showing raw text, pre-turn workflow state, exact LLM prompt payloads, raw JSON outputs from the LLM extractor, and the final action executed by the engine in real time.
 * **Simulated Voice Pipeline**: Integrated Speech-to-Text (STT) simulation and offline local Text-to-Speech (TTS) audio synthesis (under `1.0s` response latency) to support future voice/phone integrations.
 * **Staff Dashboard & Monitor**: An interactive playground dashboard including a Chat Simulator, Live Session State Monitor, and Appointments Ledger.
+* **White-labeled Branding**: Upgraded team cards with classic names (Dr. John Henry, Dr. David Miller) and direct link white-labeled email routing to `contact@clinicflow.ai`.
 
 ---
 
@@ -19,13 +23,14 @@ ClinicFlow is an intelligent virtual receptionist and clinic chatbot designed to
 * **Framework**: FastAPI (Python 3.12+)
 * **Database**: SQLite (SQLAlchemy ORM)
 * **AI Extraction**: OpenAI GPT & custom grounded prompt context
-* **Text-to-Speech (TTS)**: Offline local speech synthesis via `pyttsx3`
+* **Text-to-Speech (TTS)**: Offline local speech synthesis via Edge-TTS / Edge-TTS communication wrappers
 * **Test Suite**: `pytest`
 
 ### Frontend
 * **Framework**: React (TypeScript)
 * **Build Tool**: Vite
 * **Styling**: Vanilla CSS & Tailwind CSS
+* **Animation**: GSAP (GreenSock Animation Platform)
 * **Icons**: Lucide React
 
 ---
@@ -124,7 +129,7 @@ python test_llm3.py
 Execution Metrics Success!
 ============================================================
 Decoded Speech  : My name is Aryan and I want to cancel my appointment
-Bot Text Reply : I'd be happy to help you cancel your appointment. Could you please provide the phone number linked to your appointment?
+Bot Text Reply : I'd be help you cancel your appointment. Could you please provide the phone number linked to your appointment?
 Audio Output   : D:\iclinic\clinicflow\backend\voice_replies\reply_510_178231419155.wav
 ============================================================
 Latency Performance Telemetry:

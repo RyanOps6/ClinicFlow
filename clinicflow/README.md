@@ -37,14 +37,12 @@ See `docs/architecture.md` for full details.
 - **Frontend**: React + Vite + TypeScript. 4 pages: Dashboard, Session (call simulator), Appointments, Session Detail.
 - **AI Layer**: Optional OpenAI integration for improved extraction, response generation, and summaries. Falls back to deterministic rules when no API key is configured.
 
-### Slice 1 (Implemented)
+### Recent Feature Upgrades
 
-Booking workflow end-to-end:
-1. Start simulated session
-2. Collect patient name, phone, reason
-3. Show available slots
-4. Confirm and create appointment in DB
-5. View result in SessionPage
+* **Unified WebSocket Streaming**: The Receptionist Playground now supports instant text and transcribed voice stream synchronization over active WebSocket connections (`/api/sessions/ws/{session_id}`).
+* **Quiet STT Loop**: Removed audio recon click tones, chime beeps, and recording start/stop disruptions from the browser mic listener loops, keeping Speech-to-Text restarts silent and seamless in the background.
+* **Streamline Telemetry Status Bar**: Status telemetry banner transitions dynamically to a green style displaying `WebSocket Stream: Connected` status badge when handshakes are successfully established.
+* **White-labeled Team Branding**: Updated team profiles to display Dr. John Henry, Dr. David Miller (Chief AI Researcher), and direct-contact white-labeled email routing to `contact@clinicflow.ai`.
 
 ## Project Structure
 
@@ -87,6 +85,7 @@ clinicflow/
 | POST | `/api/appointments/{id}/cancel` | Cancel appointment |
 | GET | `/api/dashboard/overview` | Dashboard stats |
 | POST | `/api/webhooks/voice` | Simulated webhook receiver |
+| GET | `/api/sessions/ws/{id}` | WebSocket turn processing stream |
 
 ## Environment Variables
 
@@ -101,17 +100,3 @@ When `OPENAI_API_KEY` is empty, the system runs fully deterministically.
 ## Triage
 
 Rule-based urgency detection. Triggers on keywords like "chest pain", "trouble breathing", "severe bleeding", "fainting", "stroke symptoms". No AI involvement in medical decisions.
-
-## Current MVP Scope
-
-- Booking flow: complete (Slice 1)
-- Reschedule/cancel: routes exist, UI scaffolded
-- Intake: route scaffolded
-- Webhook: endpoint scaffolded
-- AI integration: architecture in place, requires API key
-- Authentication: not implemented
-- Telephony: not implemented (simulated only)
-
-## Future Integration Points
-
-See `docs/architecture.md` for Twilio/Retell integration design.
