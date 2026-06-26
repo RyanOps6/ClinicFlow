@@ -77,14 +77,12 @@
     border-radius: 16px !important;
     /* Multi-layered shadows for 3D shadow depth */
     box-shadow: 0 10px 30px -10px rgba(13, 148, 136, 0.1), 0 20px 40px -15px rgba(0, 0, 0, 0.08) !important;
-    transition: all 0.3s ease-in-out, transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out !important;
     transform-style: preserve-3d;
   }
 
-  /* 3D Hover Tilt & Lift */
+  /* 3D Hover shadow update - transform is handled by Tilt3D */
   .clinic-card-3d:hover {
-    transform: translateZ(20px) rotateX(2deg) rotateY(-1deg) !important;
-    box-shadow: 0 30px 60px -20px rgba(13, 148, 136, 0.15), 0 40px 80px -25px rgba(0, 0, 0, 0.12) !important;
+    box-shadow: 0 30px 60px -20px rgba(13, 148, 136, 0.18), 0 40px 80px -25px rgba(0, 0, 0, 0.14) !important;
   }
   
   /* 3D Micro-interactions */
@@ -101,5 +99,125 @@
 
   .orb-pulse {
     animation: orb-pulse-animation 1.5s infinite ease-in-out;
+  }
+
+  /* Serif typography for Mindloop aesthetic */
+  .serif-title {
+    font-family: 'Georgia', 'Lora', 'Playfair Display', serif;
+    letter-spacing: 0.06em;
+  }
+
+  /* Cinematic overlay scanlines */
+  .cinematic-scanline {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.08) 10%,
+      rgba(255, 255, 255, 0) 20%
+    );
+    background-size: 100% 500px;
+    opacity: 0.04;
+    pointer-events: none;
+    animation: scanline-sweep 16s linear infinite;
+    z-index: 2;
+  }
+
+  @keyframes scanline-sweep {
+    0% {
+      background-position: 0 -500px;
+    }
+    100% {
+      background-position: 0 500px;
+    }
+  }
+
+  /* Cinematic animated noise overlay */
+  .noise-overlay {
+    position: fixed;
+    top: -50%;
+    left: -50%;
+    right: -50%;
+    bottom: -50%;
+    width: 200%;
+    height: 200%;
+    background: transparent url('data:image/svg+xml,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%" height="100%" filter="url(%23noiseFilter)" opacity="0.03"/%3E%3C/svg%3E') repeat;
+    opacity: 0.06;
+    pointer-events: none;
+    animation: noise-grain 8s steps(10) infinite;
+    z-index: 9999;
+  }
+
+  @keyframes noise-grain {
+    0%, 100% { transform: translate(0, 0); }
+    10% { transform: translate(-1%, -1%); }
+    20% { transform: translate(-2%, 1%); }
+    30% { transform: translate(1%, -2%); }
+    40% { transform: translate(-1%, 2%); }
+    50% { transform: translate(-2%, 1%); }
+    60% { transform: translate(1%, 2%); }
+    70% { transform: translate(2%, -1%); }
+    80% { transform: translate(1%, 1%); }
+    90% { transform: translate(-1%, 2%); }
+  }
+
+  /* Spacious serene page wrappers */
+  .serene-page {
+    background-color: #faf9f6 !important; /* warm serene alabaster */
+    min-height: calc(100vh - 65px);
+    color: #1e293b;
+    font-family: 'Inter', -apple-system, sans-serif;
+  }
+  @media (min-width: 1024px) {
+    .serene-page {
+      height: calc(100vh - 65px);
+      min-height: auto;
+      overflow: hidden;
+    }
+  }
+
+  /* Daylight glassmorphism for daylight theme */
+  .glass-frosted-light {
+    background: rgba(255, 255, 255, 0.65) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.5) !important;
+    box-shadow: 0 10px 30px -10px rgba(56, 189, 248, 0.15), 0 20px 45px -15px rgba(0, 0, 0, 0.05) !important;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .glass-frosted-light:hover {
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 0 25px 50px -12px rgba(14, 165, 233, 0.25), 0 35px 60px -15px rgba(0, 0, 0, 0.08) !important;
+    border-color: rgba(56, 189, 248, 0.4) !important;
+  }
+
+  /* Node pulsation */
+  .neon-pulse-teal {
+    animation: neon-pulse-teal-anim 2.4s ease-out infinite;
+  }
+
+  @keyframes neon-pulse-teal-anim {
+    0%, 100% {
+      box-shadow: 0 0 0 0 rgba(20, 184, 166, 0.5);
+    }
+    50% {
+      box-shadow: 0 0 0 10px rgba(20, 184, 166, 0);
+    }
+  }
+
+  /* Scroll Reveal CSS */
+  .cf-reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .cf-reveal.cf-in {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

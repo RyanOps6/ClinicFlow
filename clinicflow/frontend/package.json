@@ -9,10 +9,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@react-three/fiber": "^8.18.0",
+    "@splinetool/react-spline": "^4.1.0",
+    "@types/three": "^0.185.0",
+    "gsap": "^3.15.0",
     "lucide-react": "^1.21.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
-    "react-router-dom": "^6.26.0"
+    "react-router-dom": "^6.26.0",
+    "three": "^0.185.0"
   },
   "devDependencies": {
     "@types/react": "^18.3.0",

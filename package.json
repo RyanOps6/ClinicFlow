@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "@react-three/fiber": "^9.6.1",
+    "@splinetool/react-spline": "^4.1.0",
+    "@types/three": "^0.185.0",
+    "gsap": "^3.15.0",
+    "three": "^0.185.0"
+  }
+}

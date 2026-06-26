@@ -3,6 +3,7 @@ import { Send, RotateCcw, User, Bot, PhoneCall, CalendarPlus, CalendarX, Mic, Mi
 import type { SendMessageResponse } from '../types';
 import { sendMessage, startRescheduleSession, startCancelSession, startSession } from '../api/client';
 import AiOrb from './AiOrb';
+import Tilt3D from './Tilt3D';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -33,6 +34,7 @@ export default function ChatInterface({ onSessionUpdate }: Props) {
 
   // Live voice refs and states
   const [isCallActive, setIsCallActive] = useState(false);
+  const [isWsConnected, setIsWsConnected] = useState(false);
   const [devWsInput, setDevWsInput] = useState('');
   const [isAiActive, setIsAiActive] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
@@ -60,12 +62,6 @@ export default function ChatInterface({ onSessionUpdate }: Props) {
       } catch (e) {}
       recognitionRef.current = null;
     }
-    if (wsRef.current) {
-      try {
-        wsRef.current.close();
-      } catch (e) {}
-      wsRef.current = null;
-    }
     if (audioRef.current) {
       try {
         audioRef.current.pause();
@@ -74,13 +70,21 @@ export default function ChatInterface({ onSessionUpdate }: Props) {
     }
   }, []);
 
-  const startVoiceCall = useCallback(() => {
-    if (!sessionId) return;
+  const connectWebSocket = useCallback((sid: number) => {
+    if (wsRef.current) {
+      if (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING) {
+        return;
+      }
+      try {
+        wsRef.current.close();
+      } catch (e) {}
+    }
+
     const wsBase = import.meta.env.PROD
       ? 'wss://clinicflow-backend-h4w4.onrender.com'
       : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`;
     const token = localStorage.getItem('auth_token') || '';
-    const wsUrl = `${wsBase}/api/sessions/ws/${sessionId}?token=${token}`;
+    const wsUrl = `${wsBase}/api/sessions/ws/${sid}?token=${token}`;
     
     let ws: WebSocket;
     try {
@@ -89,7 +93,6 @@ export default function ChatInterface({ onSessionUpdate }: Props) {
       const errStr = e?.message || String(e);
       console.error(`WebSocket creation failed for URL ${wsUrl}:`, e);
       console.error(`CONNECTION_ERROR: ${errStr}`);
-      alert("Failed to establish WebSocket connection.");
       return;
     }
     
@@ -97,7 +100,7 @@ export default function ChatInterface({ onSessionUpdate }: Props) {
     
     ws.onopen = () => {
       console.log("WebSocket connection established successfully on:", wsUrl);
-      setIsCallActive(true);
+      setIsWsConnected(true);
     };
     
     ws.onmessage = (event) => {
@@ -127,11 +130,25 @@ export default function ChatInterface({ onSessionUpdate }: Props) {
         const newStatus = data.completed ? 'completed' : 'active';
         if (data.completed) {
           setStatus('completed');
-          endVoiceCall();
+          setIsCallActive(false);
+          setIsAiActive(false);
+          if (recognitionRef.current) {
+            try { recognitionRef.current.onend = null; recognitionRef.current.stop(); } catch (e) {}
+            recognitionRef.current = null;
+          }
+          if (audioRef.current) {
+            try { audioRef.current.pause(); } catch (e) {}
+            audioRef.current = null;
+          }
+          if (wsRef.current) {
+            try { wsRef.current.close(); } catch (e) {}
+            wsRef.current = null;
+          }
+          setIsWsConnected(false);
         }
         
         onSessionUpdate?.({
-          sessionId,
+          sessionId: sid,
           intent: data.intent || intent,
           collectedData: data.collected_data || collectedData,
           workflowState: data.workflow_state,
@@ -159,16 +176,19 @@ export default function ChatInterface({ onSessionUpdate }: Props) {
     
     const handleWsClose = (event: CloseEvent) => {
       console.log(`WebSocket closed. code=${event.code}, reason=${event.reason || 'none'}, clean=${event.wasClean}`);
-      if (!event.wasClean) {
-        console.error(`CONNECTION_ERROR: WebSocket premature disconnect or abnormal closure. Code: ${event.code}, Reason: ${event.reason || 'none'}`);
-      }
+      setIsWsConnected(false);
       setIsCallActive(false);
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.onend = null;
+          recognitionRef.current.stop();
+        } catch (e) {}
+        recognitionRef.current = null;
+      }
     };
     
     const handleWsError = (err: any) => {
       console.error("WebSocket connection error occurred:", err);
-      const errStr = err?.message || (err instanceof Event ? "WebSocket error event triggered" : String(err));
-      console.error(`CONNECTION_ERROR: ${errStr}`);
     };
     
     ws.onclose = handleWsClose;
@@ -178,11 +198,38 @@ export default function ChatInterface({ onSessionUpdate }: Props) {
     ws.onerror = handleWsError;
     (ws as any).onError = handleWsError;
     ws.addEventListener('error', handleWsError);
+  }, [onSessionUpdate, intent, collectedData]);
+
+  const cleanupSessionConnections = useCallback(() => {
+    endVoiceCall();
+    if (wsRef.current) {
+      try {
+        wsRef.current.close();
+      } catch (e) {}
+      wsRef.current = null;
+    }
+    setIsWsConnected(false);
+  }, [endVoiceCall]);
+
+  const startVoiceCall = useCallback(() => {
+    if (!sessionId) return;
+    
+    // Ensure WebSocket is connected
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+      connectWebSocket(sessionId);
+    }
     
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
       alert("Speech recognition API is not supported in this browser. Please use Chrome or Edge.");
       return;
+    }
+    
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.onend = null;
+        recognitionRef.current.stop();
+      } catch (e) {}
     }
     
     const recognition = new SpeechRecognition();
@@ -192,6 +239,7 @@ export default function ChatInterface({ onSessionUpdate }: Props) {
     
     const handleSpeechStart = () => {
       console.log("Speech recognition service started (listening to microphone)...");
+      setIsCallActive(true);
     };
     
     recognition.onstart = handleSpeechStart;
@@ -201,25 +249,20 @@ export default function ChatInterface({ onSessionUpdate }: Props) {
     recognition.onresult = (event: any) => {
       const resultText = event.results[event.results.length - 1][0].transcript.trim();
       console.log(`Speech recognition result captured: "${resultText}"`);
-      if (resultText && ws.readyState === WebSocket.OPEN) {
+      if (resultText && wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
         setMessages(prev => [...prev, { role: 'user', content: resultText }]);
         const encoder = new TextEncoder();
         const dataBytes = encoder.encode(resultText);
         console.log("Streaming transcribed text bytes to backend...");
-        ws.send(dataBytes);
+        wsRef.current.send(dataBytes);
       } else {
-        console.warn("Speech captured, but WebSocket is not open. State:", ws.readyState);
+        console.warn("Speech captured, but WebSocket is not open.");
       }
     };
     
     const handleSpeechError = (event: any) => {
       const errorMsg = event.error;
-      console.error("Speech recognition error occurred:", errorMsg, event.message || "");
-      if (errorMsg === 'not-allowed') {
-        console.error("MICROPHONE_DENIED: Microphone access denied by user or system policy. Error code: not-allowed");
-      } else {
-        console.error(`SPEECH_RECOGNITION_ERROR: ${errorMsg}`);
-      }
+      console.error("Speech recognition error occurred:", errorMsg);
     };
     
     recognition.onerror = handleSpeechError;
@@ -229,12 +272,14 @@ export default function ChatInterface({ onSessionUpdate }: Props) {
     const handleSpeechEnd = () => {
       console.log("Speech recognition service stopped.");
       if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        console.log("Re-initiating speech recognition listener...");
+        console.log("Re-initiating speech recognition listener quietly...");
         try {
           recognition.start();
         } catch (e) {
           console.error("Failed to restart speech recognition:", e);
         }
+      } else {
+        setIsCallActive(false);
       }
     };
     
@@ -247,10 +292,8 @@ export default function ChatInterface({ onSessionUpdate }: Props) {
       recognition.start();
     } catch (e: any) {
       console.error("Failed to start speech recognition initial stream:", e);
-      console.error(`SPEECH_RECOGNITION_START_ERROR: ${e?.message || String(e)}`);
     }
-    
-  }, [sessionId, onSessionUpdate, intent, collectedData, endVoiceCall]);
+  }, [sessionId, connectWebSocket]);
 
   const toggleVoiceCall = useCallback(() => {
     if (isCallActive) {
@@ -296,6 +339,7 @@ export default function ChatInterface({ onSessionUpdate }: Props) {
       else res = await startSession(type);
 
       setSessionId(res.session_id);
+      connectWebSocket(res.session_id);
       setMessages([{ role: 'assistant', content: res.assistant_message }]);
       setWorkflowState(res.workflow_state);
       setStatus('active');
@@ -308,34 +352,42 @@ export default function ChatInterface({ onSessionUpdate }: Props) {
       setLoading(false);
       inputRef.current?.focus();
     }
-  }, [onSessionUpdate]);
+  }, [onSessionUpdate, connectWebSocket]);
 
   const handleSend = useCallback(async () => {
     if (!input.trim() || !sessionId || loading) return;
     const msg = input.trim();
     setInput('');
-    setLoading(true);
-    setMessages(prev => [...prev, { role: 'user', content: msg }]);
 
-    try {
-      const res: SendMessageResponse = await sendMessage(sessionId, msg);
-      setMessages(prev => [...prev, { role: 'assistant', content: res.assistant_message }]);
-      setCollectedData(res.collected_data);
-      setWorkflowState(res.workflow_state);
-      setIntent(res.intent);
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      setMessages(prev => [...prev, { role: 'user', content: msg }]);
+      const encoder = new TextEncoder();
+      const dataBytes = encoder.encode(msg);
+      console.log("Streaming main text input bytes over WebSocket to backend...");
+      wsRef.current.send(dataBytes);
+    } else {
+      setLoading(true);
+      setMessages(prev => [...prev, { role: 'user', content: msg }]);
+      try {
+        const res: SendMessageResponse = await sendMessage(sessionId, msg);
+        setMessages(prev => [...prev, { role: 'assistant', content: res.assistant_message }]);
+        setCollectedData(res.collected_data);
+        setWorkflowState(res.workflow_state);
+        setIntent(res.intent);
 
-      const newStatus = res.completed ? 'completed' : 'active';
-      if (res.completed) setStatus('completed');
-      onSessionUpdate?.({ sessionId, intent: res.intent, collectedData: res.collected_data, workflowState: res.workflow_state, status: newStatus });
-    } catch {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, something went wrong. Please try again.' }]);
-    } finally {
-      setLoading(false);
+        const newStatus = res.completed ? 'completed' : 'active';
+        if (res.completed) setStatus('completed');
+        onSessionUpdate?.({ sessionId, intent: res.intent, collectedData: res.collected_data, workflowState: res.workflow_state, status: newStatus });
+      } catch {
+        setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, something went wrong. Please try again.' }]);
+      } finally {
+        setLoading(false);
+      }
     }
   }, [input, sessionId, loading, onSessionUpdate]);
 
   const handleReset = useCallback(() => {
-    endVoiceCall();
+    cleanupSessionConnections();
     setSessionId(null);
     setMessages([]);
     setInput('');
@@ -345,7 +397,7 @@ export default function ChatInterface({ onSessionUpdate }: Props) {
     setCollectedData({});
     setWorkflowState('—');
     onSessionUpdate?.({ sessionId: null, intent: 'unknown', collectedData: {}, workflowState: '—', status: 'idle' });
-  }, [onSessionUpdate, endVoiceCall]);
+  }, [onSessionUpdate, cleanupSessionConnections]);
 
   const sessionTypes: { key: string; label: string; icon: React.ElementType; style: string }[] = [
     { key: 'unified', label: 'Simulate Unified Call', icon: PhoneCall, style: 'from-teal-50 to-indigo-50 border-teal-200 text-teal-750 hover:bg-teal-100/50' },
@@ -389,27 +441,50 @@ export default function ChatInterface({ onSessionUpdate }: Props) {
       </div>
 
       {status !== 'idle' && (
-        <div className="px-5 py-2 border-b border-amber-200 bg-amber-50/50 flex flex-wrap items-center gap-2">
-          <span className="text-[10px] font-bold text-amber-700 tracking-wider uppercase">Dev WS Test:</span>
+        <div className={`px-5 py-2 border-b flex flex-wrap items-center gap-2 transition-all duration-300 ${
+          isWsConnected 
+            ? 'border-emerald-250 bg-emerald-50/50 text-emerald-800' 
+            : 'border-amber-200 bg-amber-50/50 text-amber-800'
+        }`}>
+          <span className={`text-[10px] font-bold tracking-wider uppercase ${
+            isWsConnected ? 'text-emerald-700' : 'text-amber-700'
+          }`}>Dev WS Test:</span>
+          
+          {isWsConnected ? (
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-250 select-none">
+              WebSocket Stream: Connected
+            </span>
+          ) : (
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-250 select-none">
+              Voice Call must be active to send text via WS...
+            </span>
+          )}
+
           <input
             type="text"
             value={devWsInput}
             onChange={e => setDevWsInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSendDevWs()}
-            disabled={!isCallActive || status === 'completed'}
+            disabled={!isWsConnected || status === 'completed'}
             placeholder={
               status === 'completed'
                 ? "Session completed."
-                : isCallActive
+                : isWsConnected
                 ? "Type mock patient phrase (e.g. My name is Aryan)..."
-                : "Voice Call must be active to send text via WS..."
+                : "Connecting to WebSocket..."
             }
-            className="flex-1 min-w-[200px] px-2.5 py-1 text-xs border border-slate-200 rounded bg-white text-slate-800 focus:outline-none focus:ring-1 focus:ring-amber-500/40 focus:border-amber-500/60 disabled:bg-slate-100 disabled:border-slate-200 disabled:text-slate-400 transition-all font-mono"
+            className={`flex-1 min-w-[200px] px-2.5 py-1 text-xs border rounded bg-white text-slate-800 focus:outline-none focus:ring-1 transition-all font-mono ${
+              isWsConnected 
+                ? 'border-emerald-200 focus:ring-emerald-500/40 focus:border-emerald-500/60' 
+                : 'border-amber-200 focus:ring-amber-500/40 focus:border-amber-500/60'
+            } disabled:bg-slate-100 disabled:border-slate-200 disabled:text-slate-400`}
           />
           <button
             onClick={handleSendDevWs}
-            disabled={!isCallActive || !devWsInput.trim() || status === 'completed'}
-            className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed btn-3d"
+            disabled={!isWsConnected || !devWsInput.trim() || status === 'completed'}
+            className={`px-3 py-1 text-white rounded text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed btn-3d ${
+              isWsConnected ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-amber-600 hover:bg-amber-700'
+            }`}
           >
             Send text via WebSocket
           </button>
@@ -427,16 +502,17 @@ export default function ChatInterface({ onSessionUpdate }: Props) {
               Choose a workflow to simulate patient interactions with the AI assistant.
             </p>
           </div>
-          <div className="flex flex-col sm:flex-row flex-wrap gap-3 mt-2 w-full max-w-lg justify-center">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-3 mt-2 w-full max-w-lg justify-center" style={{ transformStyle: 'preserve-3d' }}>
             {sessionTypes.map(({ key, label, icon: Icon, style }) => (
-              <button
-                key={key}
-                onClick={() => handleStart(key)}
-                disabled={loading}
-                className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-full border text-xs font-bold bg-gradient-to-br transition-all duration-300 btn-3d ${style} disabled:opacity-50`}
-              >
-                <Icon className="w-4 h-4" /> {label}
-              </button>
+              <Tilt3D key={key} maxTilt={6}>
+                <button
+                  onClick={() => handleStart(key)}
+                  disabled={loading}
+                  className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-full border text-xs font-bold bg-gradient-to-br transition-all duration-300 btn-3d ${style} disabled:opacity-50`}
+                >
+                  <Icon className="w-4 h-4" /> {label}
+                </button>
+              </Tilt3D>
             ))}
           </div>
         </div>

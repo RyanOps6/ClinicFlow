@@ -60,7 +60,7 @@ export default function AppointmentsLedger() {
         </div>
       ) : (
         <div className="clinic-card-3d rounded-2xl overflow-hidden bg-white">
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[calc(100vh-20rem)] lg:max-h-[calc(100vh-16rem)] scrollbar-thin">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50">
